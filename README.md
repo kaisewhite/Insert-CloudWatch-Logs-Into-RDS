@@ -5,10 +5,12 @@ I figured importing the data into a an actual SQL database would make it easier 
 
 ### Imported Modules
 
-The zlib.gunzipSync() method is an inbuilt application programming interface of the Zlib module which is used to decompress a chunk of data with Gunzip
+The [zlib.gunzipSync()](https://www.geeksforgeeks.org/node-js-zlib-gunzipsync-method/) method is an inbuilt application programming interface of the Zlib module which is used to decompress a chunk of data with Gunzip
 
 ##### Syntax
 
 ```
-zlib.gunzipSync
+    const zlib = require('zlib');
+
+    zlib.gunzipSync(buffer,options)
 ```
