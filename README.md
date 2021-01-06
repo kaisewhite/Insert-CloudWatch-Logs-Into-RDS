@@ -21,6 +21,12 @@ The [zlib.gunzipSync()](https://www.geeksforgeeks.org/node-js-zlib-gunzipsync-me
 
 [node-mssql](https://www.npmjs.com/package/mssql) is the Microsoft SQL Server client for Node.js
 
+**Syntax**
+
+```
+const sql = require("mssql");
+```
+
 ### Examples
 
 **Using zlib**
@@ -39,7 +45,7 @@ So when we console log the variable **parsed** , example below, it returns an ar
 console.log('Displaying Log Stream:', JSON.stringify(parsed));
 ```
 
-**Array of objects**
+**Array of objects that gets logged to the console**
 
 ```
 {
