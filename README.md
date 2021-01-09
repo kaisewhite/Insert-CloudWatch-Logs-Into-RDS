@@ -3,6 +3,13 @@
 I created this repo because it was extremely difficult trying to parse fields using CloudWatch Log Insights. I'm not a regex expert but I am pretty good at SQL so
 I figured importing the data into a an actual SQL database would make it easier to parse and query log data.
 
+### File Details
+
+| FileName                   | Details                                                      | Langauge     |
+| -------------------------- | ------------------------------------------------------------ | ------------ |
+| `index.js`                 | Main file which contains Lambda Code                         | `JavaScript` |
+| `LambdaVPCConnection.json` | IAM policy which allows Lambda Functions to connect to a VPC | `JSON`       |
+
 ### Imported Modules
 
 **zlib**

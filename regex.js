@@ -32,3 +32,13 @@ const URL = message3.match(URLPattern) === null ? "N/A" : message3.match(URLPatt
 //console.log(parsedURL);
 
 const heathcheck = "2020-12-08 15:21:49 10.0.1.221 Amazon-Route53";
+
+function broofa() {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+    var r = (Math.random() * 16) | 0,
+      v = c == "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
+console.log(broofa());
