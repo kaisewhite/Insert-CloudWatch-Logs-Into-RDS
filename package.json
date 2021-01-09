@@ -1,0 +1,22 @@
+{
+  "name": "insert-cloudwatch-logs-into-rds",
+  "version": "1.0.0",
+  "description": "I created this repo because it was extremely difficult trying to parse fields using CloudWatch Log Insights. I'm not a regex expert but I am pretty good at SQL so I figured importing the data into a an actual SQL database would make it easier to parse and query log data.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kaisewhite/Insert-CloudWatch-Logs-Into-RDS.git"
+  },
+  "author": "Kaise White",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/kaisewhite/Insert-CloudWatch-Logs-Into-RDS/issues"
+  },
+  "homepage": "https://github.com/kaisewhite/Insert-CloudWatch-Logs-Into-RDS#readme",
+  "dependencies": {
+    "mssql": "^6.3.1"
+  }
+}
