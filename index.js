@@ -1,34 +1,58 @@
 const zlib = require("zlib");
 const sql = require("mssql");
 const { v4: uuidv4 } = require("uuid");
-
-/******************** DATABASE REQUIREMENTS *********************/
-const configProd = {
-  user: "",
-  password: "",
-  server: "", // You can use 'localhost\\instance' to connect to named instance
-  database: "",
-};
-
-const pool1 = new sql.ConnectionPool(configProd);
-const pool1Connect = pool1.connect();
-
-pool1.on("error", (err) => {
-  console.log(`Error establishing connection: ${err}`);
+var AWS = require("aws-sdk");
+var client = new AWS.SecretsManager({
+  region: "us-gov-west-1",
 });
 
-const insertIntoSQLDatabase = async (Id, Method, Date, TimeStamp, Path, URL, IPAddress) => {
+/******************** RETRIEVE SECRET FROM SECRETS MANAGER ***************************/
+// Call the AWS API and return a Promise
+const getAwsSecret = (secretName) => {
+  return client.getSecretValue({ SecretId: secretName }).promise();
+};
+// Create a async function to use the Promise
+// Top level await is a proposal
+async function getAwsSecretAsync(secretName) {
+  var error;
+  var response = await getAwsSecret(secretName).catch((err) => (error = err));
+  return [error, response];
+}
+
+const getSecretValues = async (secretName) => {
+  var [error, secret] = await getAwsSecretAsync(secretName);
+  const data = secret.SecretString;
+  //console.log(`Retreiving data from secret: ${data}`);
+  return data;
+};
+
+/******************** DATABASE  *********************/
+/**
+ * This function takes in two params
+ * secret - used to retrieve the database credentials
+ * feidls - this is an object that contains the fields to be inserted into the table
+ */
+const insertIntoSQLDatabase = async (secret, fields) => {
+  const config = await getSecretValues(secret).then((data) => {
+    return JSON.parse(data);
+  });
+
+  const pool1 = new sql.ConnectionPool(config);
+  const pool1Connect = pool1.connect();
+  pool1.on("error", (err) => {
+    console.log(`Error establishing connection: ${err}`);
+  });
+
   await pool1Connect; // ensures that the pool has been created
   try {
     const request = pool1.request(); // or: new sql.Request(pool1)
     const result = await request.query(
-      `insert into dbo.CloudWatchLogs (Id,Method,LogDate,TimeStamp,Path,URL,IPAddress) values ('${Id}','${Method}','${Date}','${TimeStamp}','${Path}','${URL}','${IPAddress}')`
+      `insert into dbo.CloudWatchLogs (Id,Method,LogDate,TimeStamp,Path,URL,IPAddress) values ('${fields.Id}','${fields.HTTPMethod}','${fields.date}','${fields.timeStamp}','${fields.path}','${fields.URL}','${fields.IPAddress}')`
     );
-    const recordCount = await request.query(`Select count(*) from dbo.CloudWatchLogs `);
-    console.log(recordCount);
-    //console.log(result);
-    //console.log(`insert into dbo.CloudWatchLogs (Id) values ('${Id}')`);
-    return recordCount;
+    console.log(
+      `insert into dbo.CloudWatchLogs (Id,Method,LogDate,TimeStamp,Path,URL,IPAddress) values ('${fields.Id}','${fields.HTTPMethod}','${fields.date}','${fields.timeStamp}','${fields.path}','${fields.URL}','${fields.IPAddress}')`
+    );
+    return result;
   } catch (err) {
     console.error("SQL error", err);
   }
@@ -51,27 +75,69 @@ const timePattern = /(?:[01]\d|2[0123]):(?:[012345]\d):(?:[012345]\d)/;
 const processLogDataProd = (event) => {
   const payload = Buffer.from(event.awslogs.data, "base64");
   const parsed = JSON.parse(zlib.gunzipSync(payload).toString("utf8"));
+  const secret = "GasatraqMSSQLRDSSecret"; //Name of the secret to retrieve database creds
 
+  // If the logstream equals ec2/gasatraq/i-01414565ae2db9bed/GASATRAQ_WEB/W3SVC3-iislogs
   if (parsed.logStream === productionLogStream) {
     console.log("Displaying Log Stream for Production:", JSON.stringify(parsed.logStream));
-
+    console.log(JSON.stringify(parsed.logEvents));
     const LogEventsArray = parsed.logEvents;
-    const Id = uuidv4();
+    //Loop through every item in the array
     for (let item of LogEventsArray) {
-      const HTTPMethod = item.message.match(HTTPMethodPattern).toString();
-      const date = item.message.match(datePattern)[0].toString();
-      const timeStamp = item.message.match(timePattern).toString();
-      const path = item.message.split(HTTPMethodPattern)[1].split("-")[0].replace(/\s/g, ""); //Removes white spaces
-      const URL = item.message.match(URLPattern) === null ? "N/A" : item.message.match(URLPattern).toString();
-      const IPAddress = item.message.split("").reverse().join("").match(IPAddressPattern).toString().split("").reverse().join("");
-      insertIntoSQLDatabase(Id, HTTPMethod, date, timeStamp, path, URL, IPAddress);
+      const fields = {
+        Id: uuidv4(),
+        HTTPMethod: item.message.match(HTTPMethodPattern).toString(),
+        date: item.message.match(datePattern)[0].toString(),
+        timeStamp: item.message.match(timePattern).toString(),
+        path: item.message.split(HTTPMethodPattern)[1].split("-")[0].replace(/\s/g, ""), //Removes white spaces,
+        URL: item.message.match(URLPattern) === null ? "N/A" : item.message.match(URLPattern).toString(),
+        IPAddress: item.message.split("").reverse().join("").match(IPAddressPattern).toString().split("").reverse().join(""),
+      };
+      //ignore healthchecks so we don't dump those ito the database
+      if (item.message.includes("ELB-HealthChecker") || item.message.includes("Amazon-Route53")) {
+        console.log("Ignoring HealthChecks");
+      } else {
+        //Pass in secret and fields object
+        insertIntoSQLDatabase(secret, fields);
+      }
+    }
+  }
+};
+
+const processLogDataDev = (event) => {
+  const payload = Buffer.from(event.awslogs.data, "base64");
+  const parsed = JSON.parse(zlib.gunzipSync(payload).toString("utf8"));
+  const secret = "GasatraqDevMSSQLRDSSecret"; //Name of the secret to retrieve database creds
+
+  // If the logstream equals ec2/gasatraq/i-01414565ae2db9bed/GASATRAQ_WEB/W3SVC3-iislogs
+  if (parsed.logStream === devLogStream) {
+    console.log("Displaying Log Stream for Dev:", JSON.stringify(parsed.logStream));
+    console.log(JSON.stringify(parsed.logEvents));
+    const LogEventsArray = parsed.logEvents;
+    //Loop through every item in the array
+    for (let item of LogEventsArray) {
+      const fields = {
+        Id: uuidv4(),
+        HTTPMethod: item.message.match(HTTPMethodPattern).toString(),
+        date: item.message.match(datePattern)[0].toString(),
+        timeStamp: item.message.match(timePattern).toString(),
+        path: item.message.split(HTTPMethodPattern)[1].split("-")[0].replace(/\s/g, ""), //Removes white spaces,
+        URL: item.message.match(URLPattern) === null ? "N/A" : item.message.match(URLPattern).toString(),
+        IPAddress: item.message.split("").reverse().join("").match(IPAddressPattern).toString().split("").reverse().join(""),
+      };
+      //ignore healthchecks so we don't dump those ito the database
+      if (item.message.includes("ELB-HealthChecker") || item.message.includes("Amazon-Route53")) {
+        console.log("Ignoring HealthChecks");
+      } else {
+        //Pass in secret and fields object
+        insertIntoSQLDatabase(secret, fields);
+      }
     }
   }
 };
 
 exports.handler = (event, context, callback) => {
   context.callbackWaitsForEmptyEventLoop = false;
-
   processLogDataProd(event);
-  //insertIntoSQLDatabase("12345678");
+  processLogDataDev(event);
 };
