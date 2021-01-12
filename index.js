@@ -40,10 +40,10 @@ const insertIntoSQLDatabase = async (secret, fields) => {
   try {
     const request = pool1.request(); // or: new sql.Request(pool1)
     const result = await request.query(
-      `insert into dbo.CloudWatchLogs (Id,Method,LogDate,TimeStamp,Path,URL,IPAddress) values ('${fields.Id}','${fields.HTTPMethod}','${fields.date}','${fields.timeStamp}','${fields.path}','${fields.URL}','${fields.IPAddress}')`
+      `insert into dbo.CloudWatchLogs (Id,Method,LogDate,TimeStamp,Path,URL,IPAddress, Message) values ('${fields.Id}','${fields.HTTPMethod}','${fields.date}','${fields.timeStamp}','${fields.path}','${fields.URL}','${fields.IPAddress}','${fields.Message}')`
     );
     console.log(
-      `insert into dbo.CloudWatchLogs (Id,Method,LogDate,TimeStamp,Path,URL,IPAddress) values ('${fields.Id}','${fields.HTTPMethod}','${fields.date}','${fields.timeStamp}','${fields.path}','${fields.URL}','${fields.IPAddress}')`
+      `insert into dbo.CloudWatchLogs (Id,Method,LogDate,TimeStamp,Path,URL,IPAddress, Message) values ('${fields.Id}','${fields.HTTPMethod}','${fields.date}','${fields.timeStamp}','${fields.path}','${fields.URL}','${fields.IPAddress}','${fields.Message}')`
     );
     return result;
   } catch (err) {
@@ -55,6 +55,7 @@ const insertIntoSQLDatabase = async (secret, fields) => {
 
 //Log Streams for Prod, Stage & Dev
 const productionLogStream = "ec2/gasatraq/i-01414565ae2db9bed/GASATRAQ_WEB/W3SVC3-iislogs";
+const productionLogStream2 = "ec2/gasatraq/i-03a28d0841157e03b/GASATRAQ-WEB2/W3SVC3-iislogs";
 const stagingLogStream = "ec2/gasatraq/i-04a14e68be91edcf5/GASATRAQDev/W3SVC2-iislogs";
 const devLogStream = "ec2/gasatraq/i-04a14e68be91edcf5/GASATRAQDev/W3SVC1-iislogs";
 
@@ -71,7 +72,7 @@ const processLogDataProd = (event) => {
   const secret = "GasatraqMSSQLRDSSecret"; //Name of the secret to retrieve database creds
 
   // If the logstream equals ec2/gasatraq/i-01414565ae2db9bed/GASATRAQ_WEB/W3SVC3-iislogs
-  if (parsed.logStream === productionLogStream) {
+  if (parsed.logStream === productionLogStream || parsed.logStream === productionLogStream2) {
     console.log("Displaying Log Stream for Production:", JSON.stringify(parsed.logStream));
     //console.log(JSON.stringify(parsed.logEvents));
     const LogEventsArray = parsed.logEvents;
@@ -85,9 +86,15 @@ const processLogDataProd = (event) => {
         path: item.message.split(HTTPMethodPattern)[1].split("-")[0].replace(/\s/g, ""), //Removes white spaces,
         URL: item.message.match(URLPattern) === null ? "N/A" : item.message.match(URLPattern).toString(),
         IPAddress: item.message.split("").reverse().join("").match(IPAddressPattern).toString().split("").reverse().join(""),
+        Message: item.message.toString(),
       };
       //ignore healthchecks so we don't dump those ito the database
-      if (item.message.includes("ELB-HealthChecker") || item.message.includes("Amazon-Route53")) {
+      if (
+        item.message.includes("ELB-HealthChecker") ||
+        item.message.includes("Amazon-Route53") ||
+        item.message.includes("amzn.to") ||
+        item.message.includes("bing.com")
+      ) {
         console.log("Ignoring HealthChecks");
       } else {
         //Pass in secret and fields object
@@ -104,7 +111,7 @@ const processLogDataStag = (event) => {
 
   // If the logstream equals ec2/gasatraq/i-01414565ae2db9bed/GASATRAQ_WEB/W3SVC3-iislogs
   if (parsed.logStream === stagingLogStream) {
-    console.log("Displaying Log Stream for Dev:", JSON.stringify(parsed.logStream));
+    console.log("Displaying Log Stream for Staging:", JSON.stringify(parsed.logStream));
     //console.log(JSON.stringify(parsed.logEvents));
     const LogEventsArray = parsed.logEvents;
     //Loop through every item in the array
@@ -117,9 +124,15 @@ const processLogDataStag = (event) => {
         path: item.message.split(HTTPMethodPattern)[1].split("-")[0].replace(/\s/g, ""), //Removes white spaces,
         URL: item.message.match(URLPattern) === null ? "N/A" : item.message.match(URLPattern).toString(),
         IPAddress: item.message.split("").reverse().join("").match(IPAddressPattern).toString().split("").reverse().join(""),
+        Message: item.message.toString(),
       };
       //ignore healthchecks so we don't dump those ito the database
-      if (item.message.includes("ELB-HealthChecker") || item.message.includes("Amazon-Route53")) {
+      if (
+        item.message.includes("ELB-HealthChecker") ||
+        item.message.includes("Amazon-Route53") ||
+        item.message.includes("amzn.to") ||
+        item.message.includes("bing.com")
+      ) {
         console.log("Ignoring HealthChecks");
       } else {
         //Pass in secret and fields object
@@ -149,9 +162,15 @@ const processLogDataDev = (event) => {
         path: item.message.split(HTTPMethodPattern)[1].split("-")[0].replace(/\s/g, ""), //Removes white spaces,
         URL: item.message.match(URLPattern) === null ? "N/A" : item.message.match(URLPattern).toString(),
         IPAddress: item.message.split("").reverse().join("").match(IPAddressPattern).toString().split("").reverse().join(""),
+        Message: item.message.toString(),
       };
       //ignore healthchecks so we don't dump those ito the database
-      if (item.message.includes("ELB-HealthChecker") || item.message.includes("Amazon-Route53")) {
+      if (
+        item.message.includes("ELB-HealthChecker") ||
+        item.message.includes("Amazon-Route53") ||
+        item.message.includes("amzn.to") ||
+        item.message.includes("bing.com")
+      ) {
         console.log("Ignoring HealthChecks");
       } else {
         //Pass in secret and fields object
@@ -166,7 +185,6 @@ exports.handler = (event, context) => {
   const payload = Buffer.from(event.awslogs.data, "base64");
   const parsed = JSON.parse(zlib.gunzipSync(payload).toString("utf8"));
   console.log(JSON.stringify(parsed));
-
   processLogDataDev(event);
   processLogDataStag(event);
   processLogDataProd(event);
