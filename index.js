@@ -8,23 +8,6 @@ var client = new AWS.SecretsManager({
 
 /******************** RETRIEVE SECRET FROM SECRETS MANAGER ***************************/
 // Call the AWS API and return a Promise
-/**const getAwsSecret = (secretName) => {
-  return client.getSecretValue({ SecretId: secretName }).promise();
-};
-// Create a async function to use the Promise
-// Top level await is a proposal
-async function getAwsSecretAsync(secretName) {
-  var error;
-  var response = await getAwsSecret(secretName).catch((err) => (error = err));
-  return [error, response];
-}
-
-const getSecretValues = async (secretName) => {
-  var [error, secret] = await getAwsSecretAsync(secretName);
-  const data = secret.SecretString;
-  //console.log(`Retreiving data from secret: ${data}`);
-  return data;
-}; */
 
 const AWSSecretsManager = async (secretName) => {
   const response = await client.getSecretValue({ SecretId: secretName }).promise();
@@ -40,7 +23,7 @@ const AWSSecretsManager = async (secretName) => {
 /**
  * This function takes in two params
  * secret - used to retrieve the database credentials
- * feidls - this is an object that contains the fields to be inserted into the table
+ * fields - this is an object that contains the props/fields to be inserted into the table
  */
 const insertIntoSQLDatabase = async (secret, fields) => {
   const config = await AWSSecretsManager(secret).then((data) => {
