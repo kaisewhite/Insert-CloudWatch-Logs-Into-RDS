@@ -1,11 +1,15 @@
 const message =
-  "2021-01-12 18:54:06 10.0.1.221 POST /Account/LogOff - 443 Sheila.Attipoe 10.0.1.245 Mozilla/5.0+(Windows+NT+10.0;+WOW64;+Trident/7.0;+rv:11.0)+like+Gecko https://gasatraq.info/Report/OverallReport 302 0 0 6 168.88.224.133";
+  "2021-01-14 20:49:52 10.0.1.221 GET /Account/VerifyCode Email=shanthi.akkaraju%40jacobs.com 443 - 10.0.3.8 Mozilla/5.0+(Windows+NT+10.0;+Win64;+x64)+AppleWebKit/537.36+(KHTML,+like+Gecko)+Chrome/87.0.4280.141+Safari/537.36 https://gasatraq.info/Account/Login 200 0 0 9 96.255.239.166";
 
-const HTTPMethodPattern = /\b(?:GET|PUT|POST|DELETE|PATCH)\b/gi;
-const IPAddressPattern = /\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/;
-const URLPattern = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/gi;
-const datePattern = /\d{4}\-(0?[1-9]|1[012])\-(0?[1-9]|[12][0-9]|3[01])*/;
-const timePattern = /(?:[01]\d|2[0123]):(?:[012345]\d):(?:[012345]\d)/;
-const namePattern = /([\w]+\.)+[\w]+(?=[\s]|$)/;
+const regString = "433";
+//const username = message.includes("LogOff")
+//  ? message
+//      .substr(message.indexOf("443") + 3) // splits everyting after 443
+//      .substring(1) //removes first space
+//      .split(" ")[0] // removes everything after the space
+//  : message.includes("Create_Account")
+//  ? message.substr(message.indexOf("username=") + 9).split("&")[0]
+//  : "unknown";
 
-console.log(message.match(namePattern));
+const username = message.includes("VerifyCode") ? message.substr(message.indexOf("Email=") + 6).split("%")[0] : "unknown";
+console.log(username);

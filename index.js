@@ -40,15 +40,17 @@ const insertIntoSQLDatabase = async (secret, fields) => {
   try {
     const request = pool1.request(); // or: new sql.Request(pool1)
     const result = await request.query(
-      `insert into dbo.CloudWatchLogs (Id,Method,LogDate,TimeStamp,Path,URL,IPAddress, Message) values ('${fields.Id}','${fields.HTTPMethod}','${fields.date}','${fields.timeStamp}','${fields.path}','${fields.URL}','${fields.IPAddress}','${fields.Message}')`
+      `insert into dbo.CloudWatchLogs (Id,Method,LogDate,TimeStamp,Path,URL,IPAddress,Message,Username) values ('${fields.Id}','${fields.HTTPMethod}','${fields.date}','${fields.timeStamp}','${fields.path}','${fields.URL}','${fields.IPAddress}','${fields.Message}','${fields.Username}')`
     );
     console.log(
-      `insert into dbo.CloudWatchLogs (Id,Method,LogDate,TimeStamp,Path,URL,IPAddress, Message) values ('${fields.Id}','${fields.HTTPMethod}','${fields.date}','${fields.timeStamp}','${fields.path}','${fields.URL}','${fields.IPAddress}','${fields.Message}')`
+      `insert into dbo.CloudWatchLogs (Id,Method,LogDate,TimeStamp,Path,URL,IPAddress,Message,Username) values ('${fields.Id}','${fields.HTTPMethod}','${fields.date}','${fields.timeStamp}','${fields.path}','${fields.URL}','${fields.IPAddress}','${fields.Message}','${fields.Username}')`
     );
+    console.log(result.recordsets.length); // count of rows contained in the recordset
     return result;
   } catch (err) {
     console.error("SQL error", err);
   }
+  pool1.close(); //Close all active connections in the pool.
 };
 
 /******************** PROCESS LOG DATA *********************/
@@ -87,13 +89,24 @@ const processLogDataProd = (event) => {
         URL: item.message.match(URLPattern) === null ? "N/A" : item.message.match(URLPattern).toString(),
         IPAddress: item.message.split("").reverse().join("").match(IPAddressPattern).toString().split("").reverse().join(""),
         Message: item.message.toString(),
+        Username: item.message.includes("LogOff")
+          ? item.message
+              .substr(item.message.indexOf("443") + 3) // splits everyting after 443
+              .substring(1) //removes first space
+              .split(" ")[0] // removes everything after the space
+          : item.message.includes("Create_Account")
+          ? item.message.substr(item.message.indexOf("username=") + 9).split("&")[0]
+          : item.message.includes("VerifyCode")
+          ? item.message.substr(item.message.indexOf("Email=") + 6).split("%")[0]
+          : "unknown",
       };
       //ignore healthchecks so we don't dump those ito the database
       if (
         item.message.includes("ELB-HealthChecker") ||
         item.message.includes("Amazon-Route53") ||
         item.message.includes("amzn.to") ||
-        item.message.includes("bing.com")
+        item.message.includes("bing.com") ||
+        item.message.includes("CookieSupport")
       ) {
         console.log("Ignoring HealthChecks");
       } else {
@@ -125,13 +138,24 @@ const processLogDataStag = (event) => {
         URL: item.message.match(URLPattern) === null ? "N/A" : item.message.match(URLPattern).toString(),
         IPAddress: item.message.split("").reverse().join("").match(IPAddressPattern).toString().split("").reverse().join(""),
         Message: item.message.toString(),
+        Username: item.message.includes("LogOff")
+          ? item.message
+              .substr(item.message.indexOf("443") + 3) // splits everyting after 443
+              .substring(1) //removes first space
+              .split(" ")[0] // removes everything after the space
+          : item.message.includes("Create_Account")
+          ? item.message.substr(item.message.indexOf("username=") + 9).split("&")[0]
+          : item.message.includes("VerifyCode")
+          ? item.message.substr(item.message.indexOf("Email=") + 6).split("%")[0]
+          : "unknown",
       };
       //ignore healthchecks so we don't dump those ito the database
       if (
         item.message.includes("ELB-HealthChecker") ||
         item.message.includes("Amazon-Route53") ||
         item.message.includes("amzn.to") ||
-        item.message.includes("bing.com")
+        item.message.includes("bing.com") ||
+        item.message.includes("CookieSupport")
       ) {
         console.log("Ignoring HealthChecks");
       } else {
@@ -163,13 +187,24 @@ const processLogDataDev = (event) => {
         URL: item.message.match(URLPattern) === null ? "N/A" : item.message.match(URLPattern).toString(),
         IPAddress: item.message.split("").reverse().join("").match(IPAddressPattern).toString().split("").reverse().join(""),
         Message: item.message.toString(),
+        Username: item.message.includes("LogOff")
+          ? item.message
+              .substr(item.message.indexOf("443") + 3) // splits everyting after 443
+              .substring(1) //removes first space
+              .split(" ")[0] // removes everything after the space
+          : item.message.includes("Create_Account")
+          ? item.message.substr(item.message.indexOf("username=") + 9).split("&")[0]
+          : item.message.includes("VerifyCode")
+          ? item.message.substr(item.message.indexOf("Email=") + 6).split("%")[0]
+          : "unknown",
       };
       //ignore healthchecks so we don't dump those ito the database
       if (
         item.message.includes("ELB-HealthChecker") ||
         item.message.includes("Amazon-Route53") ||
         item.message.includes("amzn.to") ||
-        item.message.includes("bing.com")
+        item.message.includes("bing.com") ||
+        item.message.includes("CookieSupport")
       ) {
         console.log("Ignoring HealthChecks");
       } else {
@@ -183,9 +218,9 @@ const processLogDataDev = (event) => {
 exports.handler = (event, context) => {
   context.callbackWaitsForEmptyEventLoop = false;
   const payload = Buffer.from(event.awslogs.data, "base64");
-  const parsed = JSON.parse(zlib.gunzipSync(payload).toString("utf8"));
+  const parsed = JSON.parse(zlib.gunzipSync(payload).toString("utf8")); //Unzips logs
   console.log(JSON.stringify(parsed));
   processLogDataDev(event);
   processLogDataStag(event);
-  processLogDataProd(event);
+  //processLogDataProd(event);
 };
