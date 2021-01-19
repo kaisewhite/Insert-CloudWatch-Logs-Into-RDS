@@ -89,15 +89,18 @@ const processLogDataProd = (event) => {
         URL: item.message.match(URLPattern) === null ? "N/A" : item.message.match(URLPattern).toString(),
         IPAddress: item.message.split("").reverse().join("").match(IPAddressPattern).toString().split("").reverse().join(""),
         Message: item.message.toString(),
-        Username: item.message.includes("LogOff")
-          ? item.message
-              .substr(item.message.indexOf("443") + 3) // splits everyting after 443
-              .substring(1) //removes first space
-              .split(" ")[0] // removes everything after the space
-          : item.message.includes("Create_Account")
+        Username: item.message.includes("Create_Account")
           ? item.message.substr(item.message.indexOf("username=") + 9).split("&")[0]
           : item.message.includes("VerifyCode")
           ? item.message.substr(item.message.indexOf("Email=") + 6).split("%")[0]
+          : item.message.includes("ResetPassword")
+          ? item.message.substr(item.message.indexOf("username=") + 9).split("443")[0]
+          : item.message.includes("InviteUser") ||
+            item.message.includes("LogOff") ||
+            item.message.includes("UserActivity") ||
+            item.message.includes("EvaluationList") ||
+            item.message.includes("SelfAssessmentEntry")
+          ? item.message.substr(item.message.indexOf("443") + 4).split(" ")[0]
           : "unknown",
       };
       //ignore healthchecks so we don't dump those ito the database
@@ -106,7 +109,9 @@ const processLogDataProd = (event) => {
         item.message.includes("Amazon-Route53") ||
         item.message.includes("amzn.to") ||
         item.message.includes("bing.com") ||
-        item.message.includes("CookieSupport")
+        item.message.includes("CookieSupport") ||
+        item.message.includes("styles/Site") ||
+        item.message.includes("/bundles")
       ) {
         console.log("Ignoring HealthChecks");
       } else {
@@ -138,15 +143,18 @@ const processLogDataStag = (event) => {
         URL: item.message.match(URLPattern) === null ? "N/A" : item.message.match(URLPattern).toString(),
         IPAddress: item.message.split("").reverse().join("").match(IPAddressPattern).toString().split("").reverse().join(""),
         Message: item.message.toString(),
-        Username: item.message.includes("LogOff")
-          ? item.message
-              .substr(item.message.indexOf("443") + 3) // splits everyting after 443
-              .substring(1) //removes first space
-              .split(" ")[0] // removes everything after the space
-          : item.message.includes("Create_Account")
+        Username: item.message.includes("Create_Account")
           ? item.message.substr(item.message.indexOf("username=") + 9).split("&")[0]
           : item.message.includes("VerifyCode")
           ? item.message.substr(item.message.indexOf("Email=") + 6).split("%")[0]
+          : item.message.includes("ResetPassword")
+          ? item.message.substr(item.message.indexOf("username=") + 9).split("443")[0]
+          : item.message.includes("InviteUser") ||
+            item.message.includes("LogOff") ||
+            item.message.includes("UserActivity") ||
+            item.message.includes("EvaluationList") ||
+            item.message.includes("SelfAssessmentEntry")
+          ? item.message.substr(item.message.indexOf("443") + 4).split(" ")[0]
           : "unknown",
       };
       //ignore healthchecks so we don't dump those ito the database
@@ -155,7 +163,9 @@ const processLogDataStag = (event) => {
         item.message.includes("Amazon-Route53") ||
         item.message.includes("amzn.to") ||
         item.message.includes("bing.com") ||
-        item.message.includes("CookieSupport")
+        item.message.includes("CookieSupport") ||
+        item.message.includes("styles/Site") ||
+        item.message.includes("/bundles")
       ) {
         console.log("Ignoring HealthChecks");
       } else {
@@ -187,15 +197,18 @@ const processLogDataDev = (event) => {
         URL: item.message.match(URLPattern) === null ? "N/A" : item.message.match(URLPattern).toString(),
         IPAddress: item.message.split("").reverse().join("").match(IPAddressPattern).toString().split("").reverse().join(""),
         Message: item.message.toString(),
-        Username: item.message.includes("LogOff")
-          ? item.message
-              .substr(item.message.indexOf("443") + 3) // splits everyting after 443
-              .substring(1) //removes first space
-              .split(" ")[0] // removes everything after the space
-          : item.message.includes("Create_Account")
+        Username: item.message.includes("Create_Account")
           ? item.message.substr(item.message.indexOf("username=") + 9).split("&")[0]
           : item.message.includes("VerifyCode")
           ? item.message.substr(item.message.indexOf("Email=") + 6).split("%")[0]
+          : item.message.includes("ResetPassword")
+          ? item.message.substr(item.message.indexOf("username=") + 9).split("443")[0]
+          : item.message.includes("InviteUser") ||
+            item.message.includes("LogOff") ||
+            item.message.includes("UserActivity") ||
+            item.message.includes("EvaluationList") ||
+            item.message.includes("SelfAssessmentEntry")
+          ? item.message.substr(item.message.indexOf("443") + 4).split(" ")[0]
           : "unknown",
       };
       //ignore healthchecks so we don't dump those ito the database
@@ -204,7 +217,9 @@ const processLogDataDev = (event) => {
         item.message.includes("Amazon-Route53") ||
         item.message.includes("amzn.to") ||
         item.message.includes("bing.com") ||
-        item.message.includes("CookieSupport")
+        item.message.includes("CookieSupport") ||
+        item.message.includes("styles/Site") ||
+        item.message.includes("/bundles")
       ) {
         console.log("Ignoring HealthChecks");
       } else {
