@@ -1,6 +1,6 @@
 const item = {
   message:
-    "2021-01-19 17:03:31 10.0.1.221 GET /Admin/EvaluationList - 443 akkaraju.shanthi 10.0.1.245 Mozilla/5.0+(Windows+NT+10.0;+Win64;+x64)+AppleWebKit/537.36+(KHTML,+like+Gecko)+Chrome/87.0.4280.141+Safari/537.36 https://gasatraq.info/Admin/EditUser/8453de4a-f248-ea11-aa3e-069dab0f73d6 200 0 0 55 96.255.239.166",
+    "2021-01-19 17:03:31 10.0.1.221 GET /Admin/EvaluationList - 443 John.Doe 10.0.1.245 Mozilla/5.0+(Windows+NT+10.0;+Win64;+x64)+AppleWebKit/537.36+(KHTML,+like+Gecko)+Chrome/87.0.4280.141+Safari/537.36 https://AdventureWorks.info/Admin/EditUser/8453de4a-f248-ea11-aa3e-069dab0f73d6 200 0 0 55 96.255.239.166",
 };
 //const username = message.includes("LogOff")
 //  ? message

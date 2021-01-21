@@ -80,6 +80,7 @@ const processLogDataProd = (event) => {
     const LogEventsArray = parsed.logEvents;
     //Loop through every item in the array
     for (let item of LogEventsArray) {
+      //one object to store all the fields and pass into the database insert function
       const fields = {
         Id: uuidv4(),
         HTTPMethod: item.message.match(HTTPMethodPattern).toString(),
@@ -135,6 +136,7 @@ const processLogDataStag = (event) => {
     const LogEventsArray = parsed.logEvents;
     //Loop through every item in the array
     for (let item of LogEventsArray) {
+      //one object to store all the fields and pass into the database insert function
       const fields = {
         Id: uuidv4(),
         HTTPMethod: item.message.match(HTTPMethodPattern).toString(),
@@ -190,6 +192,7 @@ const processLogDataDev = (event) => {
     const LogEventsArray = parsed.logEvents;
     //Loop through every item in the array
     for (let item of LogEventsArray) {
+      //one object to store all the fields and pass into the database insert function
       const fields = {
         Id: uuidv4(),
         HTTPMethod: item.message.match(HTTPMethodPattern).toString(),
