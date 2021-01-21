@@ -29,6 +29,7 @@ const insertIntoSQLDatabase = async (secret, fields) => {
   const config = await AWSSecretsManager(secret).then((data) => {
     return JSON.parse(data);
   });
+  console.log(`Database config: ${config}`);
 
   const pool1 = new sql.ConnectionPool(config);
   const pool1Connect = pool1.connect();
@@ -68,172 +69,77 @@ const URLPattern = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9
 const datePattern = /\d{4}\-(0?[1-9]|1[012])\-(0?[1-9]|[12][0-9]|3[01])*/;
 const timePattern = /(?:[01]\d|2[0123]):(?:[012345]\d):(?:[012345]\d)/;
 
-const processLogDataProd = (event) => {
-  const payload = Buffer.from(event.awslogs.data, "base64");
-  const parsed = JSON.parse(zlib.gunzipSync(payload).toString("utf8"));
-  const secret = "GasatraqMSSQLRDSSecret"; //Name of the secret to retrieve database creds
-
-  // If the logstream equals ec2/gasatraq/i-01414565ae2db9bed/GASATRAQ_WEB/W3SVC3-iislogs
-  if (parsed.logStream === productionLogStream || parsed.logStream === productionLogStream2) {
-    console.log("Displaying Log Stream for Production:", JSON.stringify(parsed.logStream));
-    //console.log(JSON.stringify(parsed.logEvents));
-    const LogEventsArray = parsed.logEvents;
-    //Loop through every item in the array
-    for (let item of LogEventsArray) {
-      //one object to store all the fields and pass into the database insert function
-      const fields = {
-        Id: uuidv4(),
-        HTTPMethod: item.message.match(HTTPMethodPattern).toString(),
-        date: item.message.match(datePattern)[0].toString(),
-        timeStamp: item.message.match(timePattern).toString(),
-        path: item.message.split(HTTPMethodPattern)[1].split("-")[0].replace(/\s/g, ""), //Removes white spaces,
-        URL: item.message.match(URLPattern) === null ? "N/A" : item.message.match(URLPattern).toString(),
-        IPAddress: item.message.split("").reverse().join("").match(IPAddressPattern).toString().split("").reverse().join(""),
-        Message: item.message.toString(),
-        Username: item.message.includes("Create_Account")
-          ? item.message.substr(item.message.indexOf("username=") + 9).split("&")[0]
-          : item.message.includes("VerifyCode")
-          ? item.message.substr(item.message.indexOf("Email=") + 6).split("%")[0]
-          : item.message.includes("ResetPassword")
-          ? item.message.substr(item.message.indexOf("username=") + 9).split("443")[0]
-          : item.message.includes("InviteUser") ||
-            item.message.includes("LogOff") ||
-            item.message.includes("UserActivity") ||
-            item.message.includes("EvaluationList") ||
-            item.message.includes("SelfAssessmentEntry")
-          ? item.message.substr(item.message.indexOf("443") + 4).split(" ")[0]
-          : "unknown",
-        browser: item.message.substr(item.message.indexOf("Mozilla")).split(" ")[0],
-      };
-      //ignore healthchecks so we don't dump those ito the database
-      if (
-        item.message.includes("ELB-HealthChecker") ||
-        item.message.includes("Amazon-Route53") ||
-        item.message.includes("amzn.to") ||
-        item.message.includes("bing.com") ||
-        item.message.includes("CookieSupport") ||
-        item.message.includes("styles/Site") ||
-        item.message.includes("/bundles")
-      ) {
-        console.log("Ignoring HealthChecks");
-      } else {
-        //Pass in secret and fields object
-        insertIntoSQLDatabase(secret, fields);
-      }
+const loopThroughResults = (LogEventsArray, secret) => {
+  //Loop through every item in the array
+  for (let item of LogEventsArray) {
+    //one object to store all the fields and pass into the database insert function
+    const fields = {
+      Id: uuidv4(),
+      HTTPMethod: item.message.match(HTTPMethodPattern).toString(),
+      date: item.message.match(datePattern)[0].toString(),
+      timeStamp: item.message.match(timePattern).toString(),
+      path: item.message.split(HTTPMethodPattern)[1].split("-")[0].replace(/\s/g, ""), //Removes white spaces,
+      URL: item.message.match(URLPattern) === null ? "N/A" : item.message.match(URLPattern).toString(),
+      IPAddress: item.message.split("").reverse().join("").match(IPAddressPattern).toString().split("").reverse().join(""),
+      Message: item.message.toString(),
+      Username: item.message.includes("Create_Account")
+        ? item.message.substr(item.message.indexOf("username=") + 9).split("&")[0]
+        : item.message.includes("VerifyCode")
+        ? item.message.substr(item.message.indexOf("Email=") + 6).split("%")[0]
+        : item.message.includes("ResetPassword")
+        ? item.message.substr(item.message.indexOf("username=") + 9).split("443")[0]
+        : item.message.includes("InviteUser") ||
+          item.message.includes("LogOff") ||
+          item.message.includes("UserActivity") ||
+          item.message.includes("EvaluationList") ||
+          item.message.includes("SelfAssessmentEntry")
+        ? item.message.substr(item.message.indexOf("443") + 4).split(" ")[0]
+        : "unknown",
+      browser: item.message.substr(item.message.indexOf("Mozilla")).split(" ")[0],
+    };
+    //ignore healthchecks so we don't dump those ito the database
+    if (
+      item.message.includes("ELB-HealthChecker") ||
+      item.message.includes("Amazon-Route53") ||
+      item.message.includes("amzn.to") ||
+      item.message.includes("bing.com") ||
+      item.message.includes("CookieSupport") ||
+      item.message.includes("styles/Site") ||
+      item.message.includes("/bundles")
+    ) {
+      //console.log("Ignoring HealthChecks");
+    } else {
+      //Pass in secret and fields object
+      console.log(`Using secret: ${secret}`);
+      insertIntoSQLDatabase(secret, fields);
     }
   }
 };
 
-const processLogDataStag = (event) => {
+const processLogs = (event) => {
   const payload = Buffer.from(event.awslogs.data, "base64");
   const parsed = JSON.parse(zlib.gunzipSync(payload).toString("utf8"));
-  const secret = "GasatraqStagingMSSQLRDSSecret"; //Name of the secret to retrieve database creds
+  //The secret is determined based on the logstream. Ex: If the logstream equals ec2/gasatraq/i-01414565ae2db9bed/GASATRAQ_WEB/W3SVC3-iislogs
+  //then use GasatraqMSSQLRDSSecret
 
-  // If the logstream equals ec2/gasatraq/i-01414565ae2db9bed/GASATRAQ_WEB/W3SVC3-iislogs
-  if (parsed.logStream === stagingLogStream) {
-    console.log("Displaying Log Stream for Staging:", JSON.stringify(parsed.logStream));
-    //console.log(JSON.stringify(parsed.logEvents));
-    const LogEventsArray = parsed.logEvents;
-    //Loop through every item in the array
-    for (let item of LogEventsArray) {
-      //one object to store all the fields and pass into the database insert function
-      const fields = {
-        Id: uuidv4(),
-        HTTPMethod: item.message.match(HTTPMethodPattern).toString(),
-        date: item.message.match(datePattern)[0].toString(),
-        timeStamp: item.message.match(timePattern).toString(),
-        path: item.message.split(HTTPMethodPattern)[1].split("-")[0].replace(/\s/g, ""), //Removes white spaces,
-        URL: item.message.match(URLPattern) === null ? "N/A" : item.message.match(URLPattern).toString(),
-        IPAddress: item.message.split("").reverse().join("").match(IPAddressPattern).toString().split("").reverse().join(""),
-        Message: item.message.toString(),
-        Username: item.message.includes("Create_Account")
-          ? item.message.substr(item.message.indexOf("username=") + 9).split("&")[0]
-          : item.message.includes("VerifyCode")
-          ? item.message.substr(item.message.indexOf("Email=") + 6).split("%")[0]
-          : item.message.includes("ResetPassword")
-          ? item.message.substr(item.message.indexOf("username=") + 9).split("443")[0]
-          : item.message.includes("InviteUser") ||
-            item.message.includes("LogOff") ||
-            item.message.includes("UserActivity") ||
-            item.message.includes("EvaluationList") ||
-            item.message.includes("SelfAssessmentEntry")
-          ? item.message.substr(item.message.indexOf("443") + 4).split(" ")[0]
-          : "unknown",
-        browser: item.message.substr(item.message.indexOf("Mozilla")).split(" ")[0],
-      };
-      //ignore healthchecks so we don't dump those ito the database
-      if (
-        item.message.includes("ELB-HealthChecker") ||
-        item.message.includes("Amazon-Route53") ||
-        item.message.includes("amzn.to") ||
-        item.message.includes("bing.com") ||
-        item.message.includes("CookieSupport") ||
-        item.message.includes("styles/Site") ||
-        item.message.includes("/bundles")
-      ) {
-        console.log("Ignoring HealthChecks");
-      } else {
-        //Pass in secret and fields object
-        insertIntoSQLDatabase(secret, fields);
-      }
-    }
-  }
-};
-
-const processLogDataDev = (event) => {
-  const payload = Buffer.from(event.awslogs.data, "base64");
-  const parsed = JSON.parse(zlib.gunzipSync(payload).toString("utf8"));
-  const secret = "GasatraqDevMSSQLRDSSecret"; //Name of the secret to retrieve database creds
-
-  // If the logstream equals ec2/gasatraq/i-01414565ae2db9bed/GASATRAQ_WEB/W3SVC3-iislogs
   if (parsed.logStream === devLogStream) {
     console.log("Displaying Log Stream for Dev:", JSON.stringify(parsed.logStream));
-    //console.log(JSON.stringify(parsed.logEvents));
     const LogEventsArray = parsed.logEvents;
-    //Loop through every item in the array
-    for (let item of LogEventsArray) {
-      //one object to store all the fields and pass into the database insert function
-      const fields = {
-        Id: uuidv4(),
-        HTTPMethod: item.message.match(HTTPMethodPattern).toString(),
-        date: item.message.match(datePattern)[0].toString(),
-        timeStamp: item.message.match(timePattern).toString(),
-        path: item.message.split(HTTPMethodPattern)[1].split("-")[0].replace(/\s/g, ""), //Removes white spaces,
-        URL: item.message.match(URLPattern) === null ? "N/A" : item.message.match(URLPattern).toString(),
-        IPAddress: item.message.split("").reverse().join("").match(IPAddressPattern).toString().split("").reverse().join(""),
-        Message: item.message.toString(),
-        Username: item.message.includes("Create_Account")
-          ? item.message.substr(item.message.indexOf("username=") + 9).split("&")[0]
-          : item.message.includes("VerifyCode")
-          ? item.message.substr(item.message.indexOf("Email=") + 6).split("%")[0]
-          : item.message.includes("ResetPassword")
-          ? item.message.substr(item.message.indexOf("username=") + 9).split("443")[0]
-          : item.message.includes("InviteUser") ||
-            item.message.includes("LogOff") ||
-            item.message.includes("UserActivity") ||
-            item.message.includes("EvaluationList") ||
-            item.message.includes("SelfAssessmentEntry")
-          ? item.message.substr(item.message.indexOf("443") + 4).split(" ")[0]
-          : "unknown",
-        browser: item.message.substr(item.message.indexOf("Mozilla")).split(" ")[0],
-      };
-      //ignore healthchecks so we don't dump those ito the database
-      if (
-        item.message.includes("ELB-HealthChecker") ||
-        item.message.includes("Amazon-Route53") ||
-        item.message.includes("amzn.to") ||
-        item.message.includes("bing.com") ||
-        item.message.includes("CookieSupport") ||
-        item.message.includes("styles/Site") ||
-        item.message.includes("/bundles")
-      ) {
-        console.log("Ignoring HealthChecks");
-      } else {
-        //Pass in secret and fields object
-        insertIntoSQLDatabase(secret, fields);
-      }
-    }
+    let secret = "GasatraqDevMSSQLRDSSecret";
+    loopThroughResults(LogEventsArray, secret);
   }
+  if (parsed.logStream === stagingLogStream) {
+    console.log("Displaying Log Stream for Staging:", JSON.stringify(parsed.logStream));
+    const LogEventsArray = parsed.logEvents;
+    let secret = "GasatraqStagingMSSQLRDSSecret";
+    loopThroughResults(LogEventsArray, secret);
+  }
+  //if (parsed.logStream === productionLogStream || parsed.logStream === productionLogStream2) {
+  //  console.log("Displaying Log Stream for Prod:", JSON.stringify(parsed.logStream));
+  //  const LogEventsArray = parsed.logEvents;
+  //  let secret = "GasatraqMSSQLRDSSecret";
+  //  loopThroughResults(LogEventsArray, secret);
+  //}
 };
 
 exports.handler = (event, context) => {
@@ -241,7 +147,7 @@ exports.handler = (event, context) => {
   const payload = Buffer.from(event.awslogs.data, "base64");
   const parsed = JSON.parse(zlib.gunzipSync(payload).toString("utf8")); //Unzips logs
   console.log(JSON.stringify(parsed));
-  processLogDataDev(event);
-  processLogDataStag(event);
+  processLogs(event);
+
   //processLogDataProd(event);
 };
