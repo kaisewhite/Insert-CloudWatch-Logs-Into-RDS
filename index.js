@@ -40,10 +40,10 @@ const insertIntoSQLDatabase = async (secret, fields) => {
   try {
     const request = pool1.request(); // or: new sql.Request(pool1)
     const result = await request.query(
-      `insert into dbo.CloudWatchLogs (Id,Method,LogDate,TimeStamp,Path,URL,IPAddress,Message,Username) values ('${fields.Id}','${fields.HTTPMethod}','${fields.date}','${fields.timeStamp}','${fields.path}','${fields.URL}','${fields.IPAddress}','${fields.Message}','${fields.Username}')`
+      `insert into dbo.CloudWatchLogs (Id,Method,LogDate,TimeStamp,Path,URL,IPAddress,Message,Username, Browser) values ('${fields.Id}','${fields.HTTPMethod}','${fields.date}','${fields.timeStamp}','${fields.path}','${fields.URL}','${fields.IPAddress}','${fields.Message}','${fields.Username}','${fields.browser}')`
     );
     console.log(
-      `insert into dbo.CloudWatchLogs (Id,Method,LogDate,TimeStamp,Path,URL,IPAddress,Message,Username) values ('${fields.Id}','${fields.HTTPMethod}','${fields.date}','${fields.timeStamp}','${fields.path}','${fields.URL}','${fields.IPAddress}','${fields.Message}','${fields.Username}')`
+      `insert into dbo.CloudWatchLogs (Id,Method,LogDate,TimeStamp,Path,URL,IPAddress,Message,Username, Browser) values ('${fields.Id}','${fields.HTTPMethod}','${fields.date}','${fields.timeStamp}','${fields.path}','${fields.URL}','${fields.IPAddress}','${fields.Message}','${fields.Username}','${fields.browser}')`
     );
     console.log(result.recordsets.length); // count of rows contained in the recordset
     return result;
@@ -102,6 +102,7 @@ const processLogDataProd = (event) => {
             item.message.includes("SelfAssessmentEntry")
           ? item.message.substr(item.message.indexOf("443") + 4).split(" ")[0]
           : "unknown",
+        browser: item.message.substr(item.message.indexOf("Mozilla")).split(" ")[0],
       };
       //ignore healthchecks so we don't dump those ito the database
       if (
@@ -156,6 +157,7 @@ const processLogDataStag = (event) => {
             item.message.includes("SelfAssessmentEntry")
           ? item.message.substr(item.message.indexOf("443") + 4).split(" ")[0]
           : "unknown",
+        browser: item.message.substr(item.message.indexOf("Mozilla")).split(" ")[0],
       };
       //ignore healthchecks so we don't dump those ito the database
       if (
@@ -210,6 +212,7 @@ const processLogDataDev = (event) => {
             item.message.includes("SelfAssessmentEntry")
           ? item.message.substr(item.message.indexOf("443") + 4).split(" ")[0]
           : "unknown",
+        browser: item.message.substr(item.message.indexOf("Mozilla")).split(" ")[0],
       };
       //ignore healthchecks so we don't dump those ito the database
       if (

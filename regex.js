@@ -11,11 +11,5 @@ const item = {
 //  ? message.substr(message.indexOf("username=") + 9).split("&")[0]
 //  : "unknown";
 
-const username =
-  item.message.includes("InviteUser") ||
-  item.message.includes("UserActivity") ||
-  item.message.includes("EvaluationList") ||
-  item.message.includes("SelfAssessmentEntry")
-    ? item.message.substr(item.message.indexOf("443") + 4).split(" ")[0]
-    : "unknown";
-console.log(username);
+const browser = item.message.substr(item.message.indexOf("Mozilla")).split(" ")[0];
+console.log(browser);
