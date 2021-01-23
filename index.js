@@ -29,7 +29,6 @@ const insertIntoSQLDatabase = async (secret, fields) => {
   const config = await AWSSecretsManager(secret).then((data) => {
     return JSON.parse(data);
   });
-  console.log(`Database config: ${config}`);
 
   const pool1 = new sql.ConnectionPool(config);
   const pool1Connect = pool1.connect();
@@ -46,7 +45,7 @@ const insertIntoSQLDatabase = async (secret, fields) => {
     console.log(
       `insert into dbo.CloudWatchLogs (Id,Method,LogDate,TimeStamp,Path,URL,IPAddress,Message,Username, Browser) values ('${fields.Id}','${fields.HTTPMethod}','${fields.date}','${fields.timeStamp}','${fields.path}','${fields.URL}','${fields.IPAddress}','${fields.Message}','${fields.Username}','${fields.browser}')`
     );
-    console.log(result.recordsets.length); // count of rows contained in the recordset
+    console.log(`Results: ${result.recordsets.length}`); // count of rows contained in the recordset
     return result;
   } catch (err) {
     console.error("SQL error", err);
